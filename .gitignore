@@ -1,0 +1,12 @@
+build/
+*.o
+*.a
+*.so
+.vscode/
+.idea/
+*.user
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+LinuxSoftPhone
