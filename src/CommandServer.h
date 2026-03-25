@@ -17,6 +17,8 @@ private slots:
   void processTextMessage(QString message);
   void socketDisconnected();
   void handleRegistrationStateChanged(int state, const QString& message);
+  void handleCallStateChanged(int state, const QString& remoteAddress);
+  void handleIncomingCallReceived(const QString& remoteAddr, const QString& toAddr, const QString& callId);
 
 private:
   QWebSocketServer *m_server;

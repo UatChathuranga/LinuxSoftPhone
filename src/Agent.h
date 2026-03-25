@@ -5,6 +5,13 @@
 #include <QString>
 #include <linphone/core.h>
 #include <linphone/factory.h>
+#include <vector>
+
+struct AudioDeviceInfo {
+    QString id;
+    QString name;
+    unsigned int capabilities;
+};
 
 class Agent : public QObject {
     Q_OBJECT
@@ -17,6 +24,7 @@ public:
     void setCredentials(const std::string& username, const std::string& password, const std::string& domain);
     void loop();
     void initiateCall(const std::string& destination);
+    std::vector<AudioDeviceInfo> getAudioDevices();
     
     // SIP Operations (stubs for WS commands)
     void Register();
@@ -32,12 +40,19 @@ public:
 
 signals:
     void registrationStateChangedSignal(int state, const QString& message);
-    void callStateChangedSignal(int state, const QString& message);
+    void callStateChangedSignal(int state, const QString& remoteAddress);
+    void incomingCallReceivedSignal(const QString& remoteAddr, const QString& toAddr, const QString& callId);
+    void audioDevicesChangedSignal();
+
+public slots:
+    void reloadAudioDevices();
 
 private:
     static void globalStateChanged(LinphoneCore *lc, LinphoneGlobalState gstate, const char *message);
     static void registrationStateChanged(LinphoneCore *lc, LinphoneProxyConfig *cfg, LinphoneRegistrationState cstate, const char *message);
+    static void callStateChanged(LinphoneCore *lc, LinphoneCall *call, LinphoneCallState cstate, const char *message);
 
+    void initCore();
     LinphoneCore* lc;
     LinphoneCoreCbs* cbs;
     std::string username;

@@ -1,5 +1,5 @@
-#include "AppConfig.h"
 #include "Agent.h"
+#include "AppConfig.h"
 #include "CommandServer.h"
 #include "MainWindow.h"
 #include <QApplication>
@@ -7,9 +7,11 @@
 
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
+  app.setApplicationName("facetonesoftphone");
+  app.setOrganizationName("Facetone");
 
   // Initialize Config
-  AppConfig& config = AppConfig::instance();
+  AppConfig &config = AppConfig::instance();
 
   std::string username = "testuser";
   std::string password = "testingpassword";

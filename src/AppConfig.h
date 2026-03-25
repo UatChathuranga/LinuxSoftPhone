@@ -22,6 +22,7 @@ public:
   QString ivrExternalTransferCode = "9";
   QString inputDevice = "";
   QString outputDevice = "";
+  QString ringtonePath = "ringtone.wav";
 
 private:
   explicit AppConfig(QObject *parent = nullptr);

@@ -1,10 +1,12 @@
 #include "AppConfig.h"
+#include <QString>
 #include <QCoreApplication>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QDebug>
 #include <QDir>
+#include <QStandardPaths>
 
 AppConfig& AppConfig::instance() {
   static AppConfig instance;
@@ -16,7 +18,21 @@ AppConfig::AppConfig(QObject *parent) : QObject(parent) {
 }
 
 QString AppConfig::configPath() {
-  return QCoreApplication::applicationDirPath() + "/config.json";
+  QString path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+  qDebug() << "AppConfig::configPath: Base path is" << path;
+  if (path.isEmpty()) {
+    qDebug() << "AppConfig::configPath: WARNING: Standard path is empty, falling back to local";
+    return QCoreApplication::applicationDirPath() + "/config.json";
+  }
+  QDir dir(path);
+  if (!dir.exists()) {
+    if (dir.mkpath(".")) {
+      qDebug() << "AppConfig::configPath: Created directory" << path;
+    } else {
+      qDebug() << "AppConfig::configPath: FAILED to create directory" << path;
+    }
+  }
+  return path + "/config.json";
 }
 
 void AppConfig::load() {
@@ -42,6 +58,7 @@ void AppConfig::load() {
     if (obj.contains("IVRernalTransferCode")) ivrExternalTransferCode = obj["IVRernalTransferCode"].toString();
     if (obj.contains("InputDevice")) inputDevice = obj["InputDevice"].toString();
     if (obj.contains("OutputDevice")) outputDevice = obj["OutputDevice"].toString();
+    if (obj.contains("RingtonePath")) ringtonePath = obj["RingtonePath"].toString();
     
     file.close();
   }
@@ -60,11 +77,16 @@ void AppConfig::save() {
   obj["IVRernalTransferCode"] = ivrExternalTransferCode;
   obj["InputDevice"] = inputDevice;
   obj["OutputDevice"] = outputDevice;
+  obj["RingtonePath"] = ringtonePath;
 
   QJsonDocument doc(obj);
-  QFile file(configPath());
+  QString path = configPath();
+  qDebug() << "AppConfig::save: Saving to" << path;
+  QFile file(path);
   if (file.open(QIODevice::WriteOnly)) {
     file.write(doc.toJson(QJsonDocument::Indented));
     file.close();
+  } else {
+    qDebug() << "AppConfig::save: Failed to open file for writing:" << file.errorString();
   }
 }

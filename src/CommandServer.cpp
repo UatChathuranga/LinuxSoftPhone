@@ -2,6 +2,8 @@
 #include <QDebug>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
+#include <linphone/core.h>
 #include <iostream>
 
 CommandServer::CommandServer(int port, Agent *agent, QObject *parent)
@@ -14,6 +16,10 @@ CommandServer::CommandServer(int port, Agent *agent, QObject *parent)
             &CommandServer::onNewConnection);
     connect(m_agent, &Agent::registrationStateChangedSignal, this,
             &CommandServer::handleRegistrationStateChanged);
+    connect(m_agent, &Agent::callStateChangedSignal, this,
+            &CommandServer::handleCallStateChanged);
+    connect(m_agent, &Agent::incomingCallReceivedSignal, this,
+            &CommandServer::handleIncomingCallReceived);
   }
 }
 
@@ -88,20 +94,43 @@ void CommandServer::processTextMessage(QString message) {
     m_agent->Unregister();
   } else if (command == "MakeCall" && parts.size() >= 3) {
     m_agent->MakeCall(parts[2].toStdString());
+    QJsonObject response;
+    response["veery_api_key"] = m_currentSessionKey;
+    response["veery_command"] = "MakeCall";
+    if (pClient) pClient->sendTextMessage(QJsonDocument(response).toJson(QJsonDocument::Compact));
   } else if (command == "AnswerCall") {
     m_agent->answerCall();
+    QJsonObject response;
+    response["veery_api_key"] = m_currentSessionKey;
+    response["veery_command"] = "AnswerCall";
+    if (pClient) pClient->sendTextMessage(QJsonDocument(response).toJson(QJsonDocument::Compact));
   } else if (command == "EndCall") {
     m_agent->endCall();
+    // EndCall response is usually handled in handleCallStateChanged (LinphoneCallEnd)
   } else if (command == "HoldCall") {
     m_agent->toggleHold();
+    // Feedback for Hold/Unhold usually comes from state changes if needed
   } else if (command == "TransferCall" && parts.size() >= 3) {
     m_agent->transferCall(parts[2].toStdString());
+    QJsonObject response;
+    response["veery_api_key"] = m_currentSessionKey;
+    response["veery_command"] = "TransferCall";
+    if (pClient) pClient->sendTextMessage(QJsonDocument(response).toJson(QJsonDocument::Compact));
   } else if (command == "EtlCall") {
     m_agent->endTransferCall();
+    QJsonObject response;
+    response["veery_api_key"] = m_currentSessionKey;
+    response["veery_command"] = "EtlCall";
+    if (pClient) pClient->sendTextMessage(QJsonDocument(response).toJson(QJsonDocument::Compact));
   } else if (command == "ConfCall") {
     m_agent->conferenceCall();
+    QJsonObject response;
+    response["veery_api_key"] = m_currentSessionKey;
+    response["veery_command"] = "ConfCall";
+    if (pClient) pClient->sendTextMessage(QJsonDocument(response).toJson(QJsonDocument::Compact));
   } else if (command == "MuteCall") {
     m_agent->toggleMute();
+    // Feedback for Mute could be added if Agent provides a way to check current mute state
   }
 }
 
@@ -118,13 +147,13 @@ void CommandServer::handleRegistrationStateChanged(int state, const QString& mes
     regInfo["veery_api_key"] = m_currentSessionKey;
     
     // state mapping:
-    // 2: LinphoneRegistrationOk -> "Initialized"
-    // 3: LinphoneRegistrationCleared -> "Failed"
-    // 4: LinphoneRegistrationFailed -> "Failed"
+    // LinphoneRegistrationOk -> "Initialized"
+    // LinphoneRegistrationCleared -> "Failed"
+    // LinphoneRegistrationFailed -> "Failed"
     
-    if (state == 2) { // LinphoneRegistrationOk
+    if (state == LinphoneRegistrationOk) {
         regInfo["veery_command"] = "Initialized";
-    } else if (state == 3 || state == 4) { // Cleared or Failed
+    } else if (state == LinphoneRegistrationCleared || state == LinphoneRegistrationFailed) {
         regInfo["veery_command"] = "Failed";
     } else {
         // Other states (Progressing, None, etc.) - maybe don't send anything or send as is
@@ -140,4 +169,67 @@ void CommandServer::handleRegistrationStateChanged(int state, const QString& mes
         }
     }
     qDebug() << "WS: Sent registration status update:" << jsonResponse;
+}
+
+void CommandServer::handleCallStateChanged(int state, const QString& remoteAddress) {
+    QJsonObject callInfo;
+    callInfo["veery_api_key"] = m_currentSessionKey;
+    
+    // Mapping LinphoneCallState to veery_command
+    if (state == LinphoneCallEnd || state == LinphoneCallError || state == LinphoneCallReleased) {
+        callInfo["veery_command"] = "EndCall";
+    } else {
+        return;
+    }
+
+    QJsonDocument doc(callInfo);
+    QString jsonResponse = doc.toJson(QJsonDocument::Compact);
+    for (QWebSocket *pClient : m_clients) {
+        if (pClient && pClient->isValid()) {
+            pClient->sendTextMessage(jsonResponse);
+        }
+    }
+}
+
+void CommandServer::handleIncomingCallReceived(const QString& remoteAddr, const QString& toAddr, const QString& callId) {
+    QString username = remoteAddr;
+    int sipPos = username.indexOf("sip:");
+    if (sipPos != -1) username = username.mid(sipPos + 4);
+    int atPos = username.indexOf("@");
+    if (atPos != -1) username = username.left(atPos);
+
+    // 1. IncomingCall
+    QJsonObject incoming;
+    incoming["veery_api_key"] = m_currentSessionKey;
+    incoming["veery_command"] = "IncomingCall";
+    incoming["number"] = username;
+
+    QJsonDocument docIncoming(incoming);
+    
+    // 2. ReceiveCallInfo
+    QJsonObject callInfo;
+    callInfo["veery_api_key"] = m_currentSessionKey;
+    callInfo["veery_command"] = "ReciveCallInfo";
+    callInfo["Number"] = username;
+    
+    QJsonArray veeryData;
+    veeryData.append(QString("INVITE %1 SIP/2.0\r").arg(remoteAddr));
+    veeryData.append(QString("To: %1\r").arg(toAddr));
+    veeryData.append(QString("From: %1\r").arg(remoteAddr));
+    veeryData.append(QString("Call-ID: %1\r").arg(callId));
+    veeryData.append(QString("User-Agent: FacetoneSoftPhone/1.0\r"));
+    
+    callInfo["veery_data"] = veeryData;
+    
+    QJsonDocument docCallInfo(callInfo);
+
+    QString jsonIncoming = docIncoming.toJson(QJsonDocument::Compact);
+    QString jsonCallInfo = docCallInfo.toJson(QJsonDocument::Compact);
+
+    for (QWebSocket *pClient : m_clients) {
+        if (pClient && pClient->isValid()) {
+            pClient->sendTextMessage(jsonIncoming);
+            pClient->sendTextMessage(jsonCallInfo);
+        }
+    }
 }

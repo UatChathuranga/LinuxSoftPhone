@@ -1,4 +1,5 @@
 build/
+build_install/
 *.o
 *.a
 *.so
@@ -10,3 +11,7 @@ CMakeFiles/
 Makefile
 cmake_install.cmake
 LinuxSoftPhone
+facetonesoftphone
+*.deb
+facetonesoftphone_*/
+linuxsoftphone_*/
