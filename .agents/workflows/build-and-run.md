@@ -1,8 +1,8 @@
 ---
-description: How to build and run the LinuxSoftPhone application
+description: How to build and run the FacetoneSoftPhone application
 ---
 
-This workflow guides you through the process of building and running the `LinuxSoftPhone` application.
+This workflow guides you through the process of building and running the `FacetoneSoftPhone` application.
 
 ## Prerequisites
 
@@ -42,7 +42,7 @@ Ensure you have the following installed:
 2.  If you have modified the code, rebuild using `make`.
 3.  Run the executable from the `build` directory:
     ```bash
-    ./LinuxSoftPhone
+    ./facetonesoftphone
     ```
 
 > [!NOTE]

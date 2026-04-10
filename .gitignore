@@ -16,6 +16,6 @@ facetonesoftphone
 facetonesoftphone_*/
 linuxsoftphone_*/
 DEPENDENCY_GUIDE.md
-.gitignore
 DISTRIBUTION_SUMMARY.md
 RPM_FIX_NOTES.md
+.agents/workflows/build-and-run.md

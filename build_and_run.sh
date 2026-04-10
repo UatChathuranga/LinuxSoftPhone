@@ -4,7 +4,7 @@
 BUILD_DIR="build"
 PROJECT_ROOT=$(pwd)
 
-echo "--- Building LinuxSoftPhone ---"
+echo "--- Building FacetoneSoftPhone ---"
 
 # 1. Create build directory if it doesn't exist
 mkdir -p "$BUILD_DIR"
@@ -37,5 +37,5 @@ if [ ! -d "$LINPHONE_DATA_DIR" ]; then
 fi
 
 # 4. Run the application
-echo "--- Running LinuxSoftPhone ---"
-./LinuxSoftPhone
+echo "--- Running FacetoneSoftPhone ---"
+./facetonesoftphone

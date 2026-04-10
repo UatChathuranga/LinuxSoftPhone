@@ -41,5 +41,10 @@ mkdir -p "$HOME/.local/share/linphone"
 # Update desktop database
 sudo update-desktop-database /usr/local/share/applications || true
 
+# Create system log directory
+echo "Setting up application log directory..."
+sudo mkdir -p /var/log/facetonesoftphone
+sudo chmod 777 /var/log/facetonesoftphone
+
 echo "--- Installation Complete! ---"
 echo "You can now run the app by searching for 'FacetoneSoftPhone' in your application menu or by running 'facetonesoftphone' in the terminal."
